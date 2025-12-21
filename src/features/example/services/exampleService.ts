@@ -25,7 +25,7 @@ export async function getAllExampleItems(): Promise<ExampleItem[]> {
  * @param id - アイテムID
  * @returns アイテム（見つからない場合はnull）
  */
-export async function getExampleItemById(id: string): Promise<ExampleItem | null> {
+export async function getExampleItemById(_id: string): Promise<ExampleItem | null> {
   // TODO: Prismaを使用してデータベースから取得
   // const item = await prisma.exampleItem.findUnique({
   //   where: { id },
@@ -41,7 +41,7 @@ export async function getExampleItemById(id: string): Promise<ExampleItem | null
  * @param keyword - 検索キーワード
  * @returns マッチしたアイテムのリスト
  */
-export async function searchExampleItems(keyword: string): Promise<ExampleItem[]> {
+export async function searchExampleItems(_keyword: string): Promise<ExampleItem[]> {
   // TODO: Prismaを使用してデータベースから検索
   // const items = await prisma.exampleItem.findMany({
   //   where: {

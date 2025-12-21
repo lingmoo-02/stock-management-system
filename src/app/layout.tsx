@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
+import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Admin Dashboard',
-  description: 'Full-stack web app template with Next.js and TypeScript',
+  title: '備品管理システム',
+  description: '社内備品の貸出・返却状況を可視化し、在庫管理を行うシステム',
 }
 
 export default function RootLayout({
@@ -12,10 +13,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </head>
       <body>
         {children}
       </body>

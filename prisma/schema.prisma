@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ユーザープロフィール
+model Profile {
+  id    String  @id
+  name  String
+  email String  @unique
+  role  Role    @default(USER)
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// 備品リスト
+model Asset {
+  id          String  @id @default(cuid())
+  name        String
+  category    String
+  description String?
+  serialNumber String?
+  imageUrl    String?
+  status      AssetStatus @default(AVAILABLE)
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AssetStatus {
+  AVAILABLE
+  REQUESTED
+  ON_LOAN
+  MAINTENANCE
+}
+
+// 貸出履歴
+model Transaction {
+  id             String  @id @default(cuid())
+  assetId        String
+  asset          Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  userId         String
+  user           Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  requestDate    DateTime
+  loanStartDate  DateTime?
+  returnDate     DateTime?
+  status         TransactionStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ON_LOAN
+  RETURNED
+}
