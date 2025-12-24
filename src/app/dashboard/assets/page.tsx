@@ -1,142 +1,127 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faBox } from '@fortawesome/free-solid-svg-icons'
+
+// Mock data
+const mockAssets = [
+  {
+    id: '1',
+    name: 'MacBook Pro 14',
+    category: 'PC',
+    status: 'AVAILABLE' as const,
+    description: 'Apple MacBook Pro 14 inch',
+  },
+  {
+    id: '2',
+    name: 'Dell Monitor 27',
+    category: 'モニター',
+    status: 'ON_LOAN' as const,
+    description: '27 inch 4K Monitor',
+  },
+  {
+    id: '3',
+    name: 'USB-C ケーブル',
+    category: '周辺機器',
+    status: 'AVAILABLE' as const,
+    description: 'USB-C cable',
+  },
+]
+
+const categories = ['すべて', 'PC', 'モニター', '周辺機器', 'オフィス用品']
+
+type AssetStatus = 'AVAILABLE' | 'REQUESTED' | 'ON_LOAN' | 'MAINTENANCE'
+
+const statusConfig: Record<AssetStatus, { label: string; bgColor: string; textColor: string }> = {
+  AVAILABLE: { label: '利用可能', bgColor: 'bg-green-100', textColor: 'text-green-800' },
+  REQUESTED: { label: '申請中', bgColor: 'bg-yellow-100', textColor: 'text-yellow-800' },
+  ON_LOAN: { label: '貸出中', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
+  MAINTENANCE: { label: 'メンテナンス中', bgColor: 'bg-gray-100', textColor: 'text-gray-800' },
+}
 
 export default function AssetsPage() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('all')
-  const [loading, setLoading] = useState(true)
+  const [selectedCategory, setSelectedCategory] = useState('すべて')
 
-  useEffect(() => {
-    // TODO: Implement fetching assets from API
-    setLoading(false)
-  }, [])
-
-  const categories = [
-    { id: 'all', label: 'すべて' },
-    { id: 'pc', label: 'PC' },
-    { id: 'monitor', label: 'モニター' },
-    { id: 'peripheral', label: '周辺機器' },
-    { id: 'office', label: 'オフィス用品' },
-  ]
-
-  const statusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'AVAILABLE':
-        return 'bg-green-100 text-green-800'
-      case 'REQUESTED':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'ON_LOAN':
-        return 'bg-orange-100 text-orange-800'
-      case 'MAINTENANCE':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const statusLabel = (status: string) => {
-    switch (status) {
-      case 'AVAILABLE':
-        return '利用可能'
-      case 'REQUESTED':
-        return '申請中'
-      case 'ON_LOAN':
-        return '貸出中'
-      case 'MAINTENANCE':
-        return '修理中'
-      default:
-        return status
-    }
-  }
+  const filteredAssets = mockAssets.filter((asset) => {
+    const matchesSearch = asset.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = selectedCategory === 'すべて' || asset.category === selectedCategory
+    return matchesSearch && matchesCategory
+  })
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">備品一覧</h1>
-
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              検索
-            </label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="備品名で検索..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              カテゴリ
-            </label>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            >
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* Page Title */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">備品一覧</h1>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <p className="text-gray-600">読込中...</p>
+      {/* Search Bar */}
+      <input
+        type="text"
+        placeholder="備品名で検索..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+      />
+
+      {/* Category Filter */}
+      <div className="flex gap-2 flex-wrap">
+        {categories.map((category) => (
+          <button
+            key={category}
+            onClick={() => setSelectedCategory(category)}
+            className={`px-4 py-2 rounded-md font-medium transition ${
+              selectedCategory === category
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+
+      {/* Assets Grid */}
+      {filteredAssets.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredAssets.map((asset) => {
+            const status = statusConfig[asset.status]
+            return (
+              <div key={asset.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition">
+                {/* Image Placeholder */}
+                <div className="h-40 bg-gray-200 rounded-md mb-4 flex items-center justify-center">
+                  <FontAwesomeIcon icon={faBox} className="text-4xl text-gray-400" />
+                </div>
+
+                {/* Asset Info */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-900">{asset.name}</h3>
+                  <p className="text-sm text-gray-600">{asset.description}</p>
+                  <div className="text-sm text-gray-500">カテゴリ: {asset.category}</div>
+
+                  {/* Status Badge */}
+                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${status.bgColor} ${status.textColor}`}>
+                    {status.label}
+                  </span>
+
+                  {/* View Details Link */}
+                  <Link
+                    href={`/dashboard/assets/${asset.id}`}
+                    className="block w-full text-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition mt-4"
+                  >
+                    詳細を見る
+                  </Link>
+                </div>
+              </div>
+            )
+          })}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                  備品名
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                  カテゴリ
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                  ステータス
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm text-gray-900">MacBook Pro</td>
-                <td className="px-6 py-4 text-sm text-gray-600">PC</td>
-                <td className="px-6 py-4">
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusBadgeColor('AVAILABLE')}`}>
-                    {statusLabel('AVAILABLE')}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <Link
-                    href="/dashboard/assets/1"
-                    className="text-indigo-600 hover:text-indigo-700 font-semibold"
-                  >
-                    詳細
-                  </Link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* Empty state */}
-          <div className="text-center py-12">
-            <p className="text-gray-600">備品がまだ登録されていません</p>
-          </div>
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <p className="text-gray-600 text-lg">検索条件に該当する備品がありません</p>
         </div>
       )}
     </div>

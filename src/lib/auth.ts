@@ -1,20 +1,27 @@
-import { supabase } from './supabase'
+import { createClient } from '@supabase/supabase-js'
+
+// クライアント側用のSupabaseインスタンス（Client Componentで使用）
+const supabaseClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+)
 
 export async function getCurrentUser() {
   try {
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await supabaseClient.auth.getUser()
+    console.log('[getCurrentUser] user:', user?.id, user?.email)
     return user
   } catch (error) {
-    console.error('Error getting current user:', error)
+    console.error('[getCurrentUser] Error:', error)
     return null
   }
 }
 
 export async function signUp(email: string, password: string, name: string) {
   try {
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabaseClient.auth.signUp({
       email,
       password,
       options: {
@@ -37,7 +44,7 @@ export async function signUp(email: string, password: string, name: string) {
 
 export async function signIn(email: string, password: string) {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
       email,
       password,
     })
@@ -51,7 +58,7 @@ export async function signIn(email: string, password: string) {
 
 export async function signOut() {
   try {
-    const { error } = await supabase.auth.signOut()
+    const { error } = await supabaseClient.auth.signOut()
     if (error) throw error
     return { error: null }
   } catch (error) {
