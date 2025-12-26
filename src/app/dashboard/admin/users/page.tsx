@@ -1,26 +1,76 @@
-import { redirect } from 'next/navigation'
-import { getServerUserWithProfile } from '@/lib/auth-server'
-import { getAllUsers } from '@/features/users/services/userService'
-import UserList from '@/features/users/components/UserList'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 
-export default async function AdminUsersPage() {
-  const currentUser = await getServerUserWithProfile()
+interface User {
+  id: string
+  name: string
+  email: string
+  role: 'USER' | 'ADMIN'
+  createdAt: Date
+}
 
-  // 認証チェック
-  if (!currentUser) {
-    redirect('/login')
+export default function AdminUsersPage() {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [users, setUsers] = useState<User[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string>('')
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const user = await getCurrentUser()
+        if (!user) {
+          router.push('/login')
+          return
+        }
+
+        setCurrentUserId(user.id)
+
+        // Server Action で Prisma から ロール情報を取得
+        const { getUserRole } = await import('@/lib/auth-actions')
+        const role = await getUserRole(user.id)
+
+        if (role !== 'ADMIN') {
+          router.push('/dashboard/admin')
+          return
+        }
+
+        setIsAdmin(true)
+
+        // ユーザー一覧を取得
+        const { getAllUsers } = await import('@/features/users/services/userService')
+        const usersList = await getAllUsers()
+        setUsers(usersList as User[])
+      } catch (error) {
+        router.push('/login')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [router])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-gray-600">読み込み中...</p>
+      </div>
+    )
   }
 
-  // 権限チェック
-  if (currentUser.profile?.role !== 'ADMIN') {
-    redirect('/dashboard/admin')
+  if (!isAdmin) {
+    return null
   }
 
-  // ユーザー一覧を取得
-  const users = await getAllUsers()
+  const { UserList } = require('@/features/users/components/UserList')
 
   return (
     <div className="space-y-6">
@@ -55,7 +105,7 @@ export default async function AdminUsersPage() {
       </div>
 
       {/* User List */}
-      <UserList users={users} currentUserId={currentUser.id} />
+      <UserList users={users} currentUserId={currentUserId} />
     </div>
   )
 }
