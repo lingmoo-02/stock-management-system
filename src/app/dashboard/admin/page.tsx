@@ -1,22 +1,52 @@
-import { redirect } from 'next/navigation'
-import { getServerUserWithProfile } from '@/lib/auth-server'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faExclamationTriangle, faArrowLeft, faUser, faBox, faClipboard, faCog } from '@fortawesome/free-solid-svg-icons'
 
-export default async function AdminPage() {
-  const currentUser = await getServerUserWithProfile()
+export default function AdminPage() {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
 
-  console.log('[AdminPage] currentUser:', JSON.stringify(currentUser, null, 2))
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const user = await getCurrentUser()
+        if (!user) {
+          router.push('/login')
+          return
+        }
 
-  // 認証チェック
-  if (!currentUser) {
-    redirect('/login')
+        // Server Action で Prisma から ロール情報を取得
+        const { getUserRole } = await import('@/lib/auth-actions')
+        const role = await getUserRole(user.id)
+
+        if (role === 'ADMIN') {
+          setIsAdmin(true)
+        }
+      } catch (error) {
+        router.push('/login')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkAdmin()
+  }, [router])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-gray-600">読み込み中...</p>
+      </div>
+    )
   }
 
-  // 権限チェック
-  console.log('[AdminPage] currentUser.profile?.role:', currentUser.profile?.role)
-  if (currentUser.profile?.role !== 'ADMIN') {
+  if (!isAdmin) {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow-md p-12 text-center space-y-6">
