@@ -15,12 +15,6 @@ export default function Home() {
           >
             ログイン
           </Link>
-          <Link
-            href="/signup"
-            className="w-full px-4 py-2 bg-white text-indigo-600 font-semibold rounded-md border-2 border-indigo-600 hover:bg-indigo-50 transition text-center"
-          >
-            新規登録
-          </Link>
         </div>
       </div>
     </div>

@@ -20,6 +20,15 @@ export async function getUserById(userId: string): Promise<Profile | null> {
 }
 
 /**
+ * メールアドレスでプロフィールを取得
+ */
+export async function getUserByEmail(email: string): Promise<Profile | null> {
+  return await prisma.profile.findUnique({
+    where: { email },
+  })
+}
+
+/**
  * ロール別にユーザーを取得
  */
 export async function getUsersByRole(role: Role): Promise<Profile[]> {

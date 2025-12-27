@@ -1,100 +1,88 @@
-// Server Component専用の認証機能
-// このファイルは Server Component からのみ import してください
+'use server'
 
-import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
-import { prisma } from './prisma'
-
-// Server Component用のSupabaseクライアント（クッキー対応）
-function createServerClient() {
-  const cookieStore = cookies()
-
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet: any[]) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }: any) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            // クッキーセット失敗時は無視
-          }
-        },
-      },
-    }
-  )
-}
+import { cookies } from 'next/headers'
 
 /**
- * Server Component用: クッキーからユーザー情報を取得
+ * Server Actions用：Cookie から認証情報を取得
+ * このファイルは Server Action コンテキストでのみ使用
  */
-export async function getServerUser() {
+export async function getCurrentUserServer() {
   try {
-    const supabase = createServerClient()
+    const cookieStore = cookies()
+
+    // すべてのcookieを取得してデバッグ
+    const allCookies = cookieStore.getAll()
+    console.log('[getCurrentUserServer] All cookies:', allCookies.map(c => c.name))
+
+    // 複数のパターンでauth cookieを探す
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    let projectId = ''
+    try {
+      projectId = supabaseUrl.split('.supabase.co')[0].split('//')[1] || ''
+    } catch {
+      console.error('[getCurrentUserServer] Failed to extract project ID from URL')
+    }
+
+    const authTokenPatterns = [
+      `sb-${projectId}-auth-token`,
+      'sb-auth-token',
+      'supabase-auth-token',
+    ]
+
+    console.log('[getCurrentUserServer] Looking for auth tokens:', authTokenPatterns)
+
+    let authToken: string | null = null
+    for (const pattern of authTokenPatterns) {
+      const token = cookieStore.get(pattern)?.value
+      if (token) {
+        console.log(`[getCurrentUserServer] Found token with pattern: ${pattern}`)
+        authToken = token
+        break
+      }
+    }
+
+    if (!authToken) {
+      console.log('[getCurrentUserServer] No auth token found in any pattern')
+      return null
+    }
+
+    // Cookie の値から access_token を抽出
+    let accessToken: string | null = null
+    try {
+      const tokenData = JSON.parse(authToken)
+      accessToken = tokenData.access_token
+      console.log('[getCurrentUserServer] Extracted access token from JSON')
+    } catch {
+      accessToken = authToken
+      console.log('[getCurrentUserServer] Using auth token directly as access token')
+    }
+
+    if (!accessToken) {
+      console.log('[getCurrentUserServer] No access token in auth token')
+      return null
+    }
+
+    // Access Token を使用して user 情報を取得
+    const serverClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    )
+
     const {
       data: { user },
-    } = await supabase.auth.getUser()
-    console.log('[getServerUser] user:', user?.id, user?.email)
+      error,
+    } = await serverClient.auth.getUser(accessToken)
+
+    if (error || !user) {
+      console.log('[getCurrentUserServer] Error getting user:', error?.message)
+      return null
+    }
+
+    console.log('[getCurrentUserServer] user:', user?.id, user?.email)
     return user
   } catch (error) {
-    console.error('[getServerUser] Error:', error)
-    return null
-  }
-}
-
-/**
- * ユーザープロフィールを取得
- */
-export async function getUserProfile(userId: string) {
-  try {
-    console.log('[getUserProfile] Fetching profile for userId:', userId)
-    const profile = await prisma.profile.findUnique({
-      where: { id: userId },
-    })
-    console.log('[getUserProfile] Found profile:', profile)
-    return profile
-  } catch (error) {
-    console.error('[getUserProfile] Error:', error)
-    return null
-  }
-}
-
-export type UserWithProfile = {
-  id: string
-  email: string | null
-  profile: {
-    id: string
-    name: string
-    email: string
-    role: 'USER' | 'ADMIN'
-    createdAt: Date
-    updatedAt: Date
-  } | null
-}
-
-/**
- * Server Component用: ユーザー情報とプロフィールを統合して取得
- */
-export async function getServerUserWithProfile(): Promise<UserWithProfile | null> {
-  try {
-    const user = await getServerUser()
-    if (!user) return null
-
-    const profile = await getUserProfile(user.id)
-
-    return {
-      id: user.id,
-      email: user.email ?? null,
-      profile,
-    }
-  } catch (error) {
-    console.error('Error getting server user with profile:', error)
+    console.error('[getCurrentUserServer] Error:', error)
     return null
   }
 }

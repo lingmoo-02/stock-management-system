@@ -1,12 +1,16 @@
-import { getServerUserWithProfile } from './auth-server'
+import { getCurrentUser } from './auth'
+import { getUserRole } from './auth-actions'
 
 /**
  * 現在のユーザーが管理者かどうかをチェック
  */
 export async function isAdmin(): Promise<boolean> {
   try {
-    const user = await getServerUserWithProfile()
-    return user?.profile?.role === 'ADMIN'
+    const user = await getCurrentUser()
+    if (!user) return false
+
+    const role = await getUserRole(user.id)
+    return role === 'ADMIN'
   } catch (error) {
     console.error('Error checking admin permission:', error)
     return false
@@ -29,8 +33,11 @@ export async function requireAdmin(): Promise<void> {
  */
 export async function getCurrentUserRole(): Promise<'USER' | 'ADMIN' | null> {
   try {
-    const user = await getServerUserWithProfile()
-    return user?.profile?.role ?? null
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    const role = await getUserRole(user.id)
+    return role as 'USER' | 'ADMIN' | null
   } catch (error) {
     console.error('Error getting current user role:', error)
     return null
