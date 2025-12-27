@@ -3,23 +3,17 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
+import UserList from '@/features/users/components/UserList'
+import { Profile } from '@/features/users/types'
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons'
-
-interface User {
-  id: string
-  name: string
-  email: string
-  role: 'USER' | 'ADMIN'
-  createdAt: Date
-}
 
 export default function AdminUsersPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<Profile[]>([])
   const [currentUserId, setCurrentUserId] = useState<string>('')
 
   useEffect(() => {
@@ -47,7 +41,7 @@ export default function AdminUsersPage() {
         // ユーザー一覧を取得
         const { getAllUsers } = await import('@/features/users/services/userService')
         const usersList = await getAllUsers()
-        setUsers(usersList as User[])
+        setUsers(usersList)
       } catch (error) {
         router.push('/login')
       } finally {
@@ -69,8 +63,6 @@ export default function AdminUsersPage() {
   if (!isAdmin) {
     return null
   }
-
-  const { UserList } = require('@/features/users/components/UserList')
 
   return (
     <div className="space-y-6">
