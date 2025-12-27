@@ -15,36 +15,50 @@ export default function UserList({ users, currentUserId }: UserListProps) {
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [usersList, setUsersList] = useState<Profile[]>(users)
 
   // 検索フィルタリング
   const filteredUsers = useMemo(() => {
     if (!searchQuery.trim()) {
-      return users
+      return usersList
     }
 
     const query = searchQuery.toLowerCase()
-    return users.filter(
+    return usersList.filter(
       (user) =>
         user.name.toLowerCase().includes(query) ||
         user.email.toLowerCase().includes(query)
     )
-  }, [users, searchQuery])
+  }, [usersList, searchQuery])
 
   const handleToggleAdmin = async (user: Profile) => {
-    const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN'
+    const newRole: typeof user.role = user.role === 'ADMIN' ? 'USER' : 'ADMIN'
     setLoadingUserId(user.id)
     setError(null)
+
+    // 楽観的UI更新
+    const updatedUsers = usersList.map((u) =>
+      u.id === user.id ? { ...u, role: newRole } : u
+    )
+    setUsersList(updatedUsers)
 
     try {
       const result = await updateUserRole(currentUserId, user.id, newRole)
 
-      if (result.success) {
-        alert('ロールを変更しました。ページを更新します。')
-        window.location.reload()
-      } else {
+      if (!result.success) {
+        // エラー時は元に戻す
+        const revertedUsers = usersList.map((u) =>
+          u.id === user.id ? { ...u, role: user.role } : u
+        )
+        setUsersList(revertedUsers)
         setError(result.error || 'ロールの変更に失敗しました')
       }
     } catch (err) {
+      // エラー時は元に戻す
+      const revertedUsers = usersList.map((u) =>
+        u.id === user.id ? { ...u, role: user.role } : u
+      )
+      setUsersList(revertedUsers)
       setError('ロールの変更に失敗しました')
       console.error('Error updating role:', err)
     } finally {
