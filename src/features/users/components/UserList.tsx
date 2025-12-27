@@ -2,11 +2,9 @@
 
 import { useState, useMemo } from 'react'
 import { Profile } from '../types'
-import UserRoleBadge from './UserRoleBadge'
-import RoleChangeDialog from './RoleChangeDialog'
 import { updateUserRole } from '../actions'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPen, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faXmark } from '@fortawesome/free-solid-svg-icons'
 
 interface UserListProps {
   users: Profile[]
@@ -14,9 +12,7 @@ interface UserListProps {
 }
 
 export default function UserList({ users, currentUserId }: UserListProps) {
-  const [selectedUser, setSelectedUser] = useState<Profile | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -34,22 +30,15 @@ export default function UserList({ users, currentUserId }: UserListProps) {
     )
   }, [users, searchQuery])
 
-  const handleOpenDialog = (user: Profile) => {
-    setError(null)
-    setSelectedUser(user)
-    setIsDialogOpen(true)
-  }
-
-  const handleRoleChange = async (userId: string, newRole: 'USER' | 'ADMIN') => {
-    setLoading(true)
+  const handleToggleAdmin = async (user: Profile) => {
+    const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN'
+    setLoadingUserId(user.id)
     setError(null)
 
     try {
-      const result = await updateUserRole(userId, newRole)
+      const result = await updateUserRole(currentUserId, user.id, newRole)
 
       if (result.success) {
-        setIsDialogOpen(false)
-        setSelectedUser(null)
         alert('ロールを変更しました。ページを更新します。')
         window.location.reload()
       } else {
@@ -59,7 +48,7 @@ export default function UserList({ users, currentUserId }: UserListProps) {
       setError('ロールの変更に失敗しました')
       console.error('Error updating role:', err)
     } finally {
-      setLoading(false)
+      setLoadingUserId(null)
     }
   }
 
@@ -119,13 +108,10 @@ export default function UserList({ users, currentUserId }: UserListProps) {
                     メールアドレス
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    ロール
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     登録日
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    操作
+                    管理者
                   </th>
                 </tr>
               </thead>
@@ -145,20 +131,30 @@ export default function UserList({ users, currentUserId }: UserListProps) {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {user.email}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <UserRoleBadge role={user.role} />
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {new Date(user.createdAt).toLocaleDateString('ja-JP')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => handleOpenDialog(user)}
-                        disabled={loading}
-                        className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleToggleAdmin(user)}
+                        disabled={loadingUserId === user.id}
+                        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                          user.role === 'ADMIN'
+                            ? 'bg-indigo-600'
+                            : 'bg-gray-300'
+                        } ${loadingUserId === user.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        title={user.id === currentUserId ? 'あなたのロールです' : 'クリックして変更'}
                       >
-                        <FontAwesomeIcon icon={faPen} className="w-4 h-4" />
-                        変更
+                        <span
+                          className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                            user.role === 'ADMIN' ? 'translate-x-7' : 'translate-x-1'
+                          }`}
+                        />
+                        {loadingUserId === user.id && (
+                          <span className="absolute inset-0 flex items-center justify-center">
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
+                          </span>
+                        )}
                       </button>
                     </td>
                   </tr>
@@ -167,20 +163,6 @@ export default function UserList({ users, currentUserId }: UserListProps) {
             </table>
           </div>
         </div>
-      )}
-
-      {selectedUser && (
-        <RoleChangeDialog
-          isOpen={isDialogOpen}
-          user={selectedUser}
-          onClose={() => {
-            setIsDialogOpen(false)
-            setSelectedUser(null)
-            setError(null)
-          }}
-          onConfirm={handleRoleChange}
-          isLoading={loading}
-        />
       )}
     </>
   )
