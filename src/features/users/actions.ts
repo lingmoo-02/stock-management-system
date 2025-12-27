@@ -1,8 +1,8 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/permissions'
-import { getServerUserWithProfile } from '@/lib/auth-server'
+import { getCurrentUser } from '@/lib/auth'
+import { getUserRole } from '@/lib/auth-actions'
 import { updateUserRoleSchema } from './schema'
 import { getAdminCount, getUserById } from './services/userService'
 
@@ -11,22 +11,36 @@ import { getAdminCount, getUserById } from './services/userService'
  */
 export async function updateUserRole(userId: string, newRole: 'USER' | 'ADMIN') {
   try {
-    // 1. 管理者権限チェック
-    await requireAdmin()
+    // 1. 認証チェック
+    const currentUser = await getCurrentUser()
+    if (!currentUser) {
+      return {
+        success: false,
+        error: 'ログインしてください',
+      }
+    }
 
-    // 2. バリデーション
+    // 2. 管理者権限チェック
+    const currentUserRole = await getUserRole(currentUser.id)
+    if (currentUserRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: '管理者権限が必要です',
+      }
+    }
+
+    // 3. バリデーション
     const validated = updateUserRoleSchema.parse({ userId, role: newRole })
 
-    // 3. 自分自身のロール変更を防止
-    const currentUser = await getServerUserWithProfile()
-    if (currentUser?.id === userId && newRole === 'USER') {
+    // 4. 自分自身のロール変更を防止
+    if (currentUser.id === userId && newRole === 'USER') {
       return {
         success: false,
         error: '自分自身の管理者権限を削除することはできません',
       }
     }
 
-    // 4. ターゲットユーザーの確認
+    // 5. ターゲットユーザーの確認
     const targetUser = await getUserById(userId)
     if (!targetUser) {
       return {
@@ -35,7 +49,7 @@ export async function updateUserRole(userId: string, newRole: 'USER' | 'ADMIN') 
       }
     }
 
-    // 5. 最後の管理者を削除しようとしていないかチェック
+    // 6. 最後の管理者を削除しようとしていないかチェック
     if (targetUser.role === 'ADMIN' && newRole === 'USER') {
       const adminCount = await getAdminCount()
       if (adminCount <= 1) {
@@ -46,7 +60,7 @@ export async function updateUserRole(userId: string, newRole: 'USER' | 'ADMIN') 
       }
     }
 
-    // 6. DB更新
+    // 7. DB更新
     const updatedUser = await prisma.profile.update({
       where: { id: userId },
       data: { role: validated.role },
