@@ -5,15 +5,12 @@ import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faExclamationTriangle, faArrowLeft, faUser, faBox, faClipboard, faCog, faTimes } from '@fortawesome/free-solid-svg-icons'
-import AssetRegistrationForm from '@/features/assets/components/AssetRegistrationForm'
+import { faExclamationTriangle, faArrowLeft, faUser, faBox, faClipboard, faCog } from '@fortawesome/free-solid-svg-icons'
 
 export default function AdminPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [showAssetModal, setShowAssetModal] = useState(false)
-  const [currentUserId, setCurrentUserId] = useState<string>('')
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -23,8 +20,6 @@ export default function AdminPage() {
           router.push('/login')
           return
         }
-
-        setCurrentUserId(user.id)
 
         // Server Action で Prisma から ロール情報を取得
         const { getUserRole } = await import('@/lib/auth-actions')
@@ -105,7 +100,10 @@ export default function AdminPage() {
         </Link>
 
         {/* Asset Management */}
-        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
+        <Link
+          href="/dashboard/admin/assets"
+          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition"
+        >
           <div className="flex items-center gap-3 mb-4">
             <FontAwesomeIcon icon={faBox} className="text-2xl text-indigo-600" />
             <h2 className="text-xl font-bold text-gray-900">備品管理</h2>
@@ -113,13 +111,10 @@ export default function AdminPage() {
           <p className="text-gray-600 mb-6">
             備品の登録、編集、削除を行います
           </p>
-          <button
-            onClick={() => setShowAssetModal(true)}
-            className="w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition"
-          >
-            備品管理
-          </button>
-        </div>
+          <div className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md text-center hover:bg-indigo-700 transition">
+            備品管理を開く
+          </div>
+        </Link>
 
         {/* Transaction Management */}
         <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-not-allowed opacity-75">
@@ -149,33 +144,6 @@ export default function AdminPage() {
           </button>
         </div>
       </div>
-
-      {/* Asset Registration Modal */}
-      {showAssetModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">備品新規登録</h2>
-              <button
-                onClick={() => setShowAssetModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              <AssetRegistrationForm
-                currentUserId={currentUserId}
-                onSuccess={() => {
-                  setShowAssetModal(false)
-                  alert('備品を登録しました')
-                }}
-                onCancel={() => setShowAssetModal(false)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

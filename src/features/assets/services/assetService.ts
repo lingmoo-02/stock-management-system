@@ -8,6 +8,16 @@ export async function getAllAssets(): Promise<Asset[]> {
   })
 }
 
+// 登録済みのユニークなカテゴリを取得
+export async function getUniqueCategoriesAction(): Promise<string[]> {
+  const assets = await prisma.asset.findMany({
+    select: { category: true },
+    distinct: ['category'],
+    orderBy: { category: 'asc' },
+  })
+  return assets.map((asset) => asset.category)
+}
+
 // ID検索
 export async function getAssetById(assetId: string): Promise<Asset | null> {
   return await prisma.asset.findUnique({
