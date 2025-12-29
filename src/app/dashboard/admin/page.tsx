@@ -100,18 +100,21 @@ export default function AdminPage() {
         </Link>
 
         {/* Asset Management */}
-        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-not-allowed opacity-75">
+        <Link
+          href="/dashboard/admin/assets"
+          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition"
+        >
           <div className="flex items-center gap-3 mb-4">
-            <FontAwesomeIcon icon={faBox} className="text-2xl text-gray-400" />
+            <FontAwesomeIcon icon={faBox} className="text-2xl text-indigo-600" />
             <h2 className="text-xl font-bold text-gray-900">備品管理</h2>
           </div>
           <p className="text-gray-600 mb-6">
             備品の登録、編集、削除を行います
           </p>
-          <button className="w-full px-4 py-2 bg-gray-300 text-gray-500 font-semibold rounded-md cursor-not-allowed">
-            備品管理（準備中）
-          </button>
-        </div>
+          <div className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md text-center hover:bg-indigo-700 transition">
+            備品管理を開く
+          </div>
+        </Link>
 
         {/* Transaction Management */}
         <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-not-allowed opacity-75">
