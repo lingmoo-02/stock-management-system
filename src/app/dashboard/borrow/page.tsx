@@ -26,6 +26,7 @@ export default function BorrowPage() {
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const loadData = async () => {
@@ -60,6 +61,16 @@ export default function BorrowPage() {
   }, [router])
 
   const selectedAsset = assets.find((a) => a.id === formData.assetId)
+
+  // 検索フィルタリング
+  const filteredAssets = assets.filter((asset) => {
+    const query = searchQuery.toLowerCase()
+    return (
+      asset.name?.toLowerCase().includes(query) ||
+      asset.category.toLowerCase().includes(query) ||
+      asset.description?.toLowerCase().includes(query)
+    )
+  })
 
   const handleSelectAsset = (assetId: string) => {
     setFormData({ assetId })
@@ -167,13 +178,33 @@ export default function BorrowPage() {
       {step === 'select' && (
         <div className="space-y-4">
           <p className="text-gray-600">利用可能な備品を選択してください</p>
+
+          {/* Search Box */}
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <input
+              type="text"
+              placeholder="備品名、カテゴリ、説明で検索..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          </div>
+
           {assets.length === 0 ? (
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
               <p className="text-gray-600">利用可能な備品はありません</p>
             </div>
+          ) : filteredAssets.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <p className="text-gray-600">
+                検索結果がありません
+                <br />
+                「{searchQuery}」に該当する備品はいません
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
-              {assets.map((asset) => (
+              {filteredAssets.map((asset) => (
                 <button
                   key={asset.id}
                   onClick={() => handleSelectAsset(asset.id)}
