@@ -11,7 +11,6 @@ export default function AssetsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [assets, setAssets] = useState<Asset[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
     const loadData = async () => {
@@ -27,8 +26,6 @@ export default function AssetsPage() {
           router.push('/login')
           return
         }
-
-        setUserId(user.id)
 
         // Server Action でアセット一覧を取得
         try {
@@ -85,7 +82,7 @@ export default function AssetsPage() {
       </div>
 
       {/* Asset List */}
-      <AssetList assets={assets} userId={userId || undefined} />
+      <AssetList assets={assets} />
     </div>
   )
 }
