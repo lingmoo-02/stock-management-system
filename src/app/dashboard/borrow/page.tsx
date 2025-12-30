@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCheck, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { getCurrentUser } from '@/lib/auth'
-import { getAllAssets } from '@/features/assets/services/assetService'
 import { borrowAsset } from '@/features/transactions/actions'
 import type { Asset } from '@/features/assets/types'
 
@@ -39,7 +38,11 @@ export default function BorrowPage() {
 
         setUserId(user.id)
 
-        const assetsList = await getAllAssets()
+        // Server Action を使用して備品一覧を取得
+        const { getAllAssetsAction } = await import(
+          '@/features/assets/server-actions'
+        )
+        const assetsList = await getAllAssetsAction()
         // 利用可能な備品のみフィルタ
         const availableAssets = assetsList.filter(
           (asset) => asset.status === 'AVAILABLE'
