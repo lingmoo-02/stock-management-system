@@ -4,13 +4,20 @@ import { useState, useMemo } from 'react'
 import type { Asset } from '../types'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXmark } from '@fortawesome/free-solid-svg-icons'
+import { borrowAsset } from '../../../features/transactions/actions'
 
 interface AssetListProps {
   assets: Asset[]
+  userId?: string
 }
 
-export default function AssetList({ assets }: AssetListProps) {
+export default function AssetList({ assets, userId }: AssetListProps) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [isLoading, setIsLoading] = useState<string | null>(null)
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error'
+    text: string
+  } | null>(null)
 
   const filteredAssets = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -28,6 +35,32 @@ export default function AssetList({ assets }: AssetListProps) {
 
   const handleClearSearch = () => {
     setSearchQuery('')
+  }
+
+  const handleBorrow = async (assetId: string) => {
+    if (!userId) {
+      setMessage({ type: 'error', text: 'ログインが必要です' })
+      return
+    }
+
+    setIsLoading(assetId)
+    setMessage(null)
+
+    try {
+      const result = await borrowAsset(userId, assetId)
+
+      if (result.success) {
+        setMessage({ type: 'success', text: '備品を借りました' })
+        // メッセージを2秒後に消去
+        setTimeout(() => setMessage(null), 2000)
+      } else {
+        setMessage({ type: 'error', text: result.error || '借用に失敗しました' })
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: '予期しないエラーが発生しました' })
+    } finally {
+      setIsLoading(null)
+    }
   }
 
   // ステータスの日本語表示
@@ -115,6 +148,9 @@ export default function AssetList({ assets }: AssetListProps) {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     ステータス
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    アクション
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -143,11 +179,35 @@ export default function AssetList({ assets }: AssetListProps) {
                         {getStatusLabel(asset.status)}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {asset.status === 'AVAILABLE' && (
+                        <button
+                          onClick={() => handleBorrow(asset.id)}
+                          disabled={isLoading === asset.id}
+                          className="px-3 py-1 bg-indigo-600 text-white text-xs font-medium rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+                        >
+                          {isLoading === asset.id ? '借用中...' : '借りる'}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* メッセージ表示 */}
+      {message && (
+        <div
+          className={`mt-4 p-4 rounded-lg font-medium ${
+            message.type === 'success'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+          }`}
+        >
+          {message.text}
         </div>
       )}
     </>
