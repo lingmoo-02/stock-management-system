@@ -151,57 +151,69 @@ export default function ReturnPage() {
       {/* 返却確認モーダル */}
       {selectedTransaction && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 space-y-6">
+          <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 space-y-6">
             <div className="space-y-4">
-              <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm font-semibold text-red-800">
-                  備品を返却します
-                </p>
-              </div>
+              <h2 className="text-2xl font-bold text-gray-900">備品詳細</h2>
 
-              <div className="space-y-3 border-t border-gray-200 pt-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">備品コード</span>
-                  <span className="font-semibold text-gray-900">
+              <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+                <div>
+                  <p className="text-sm text-gray-600">備品コード</p>
+                  <p className="text-lg font-semibold text-gray-900">
                     {selectedTransaction.asset.name}
-                  </span>
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">カテゴリ</span>
-                  <span className="font-semibold text-gray-900">
+                <div>
+                  <p className="text-sm text-gray-600">カテゴリ</p>
+                  <p className="text-lg font-semibold text-gray-900">
                     {selectedTransaction.asset.category}
-                  </span>
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">説明</span>
-                  <span className="font-semibold text-gray-900">
+                <div className="col-span-2">
+                  <p className="text-sm text-gray-600">備考</p>
+                  <p className="text-lg font-semibold text-gray-900">
                     {selectedTransaction.asset.description || '-'}
-                  </span>
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">貸出開始日</span>
-                  <span className="font-semibold text-gray-900">
+                <div>
+                  <p className="text-sm text-gray-600">購入日</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {new Date(selectedTransaction.asset.createdAt).toLocaleDateString(
+                      'ja-JP'
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">最終更新日</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {new Date(selectedTransaction.asset.updatedAt).toLocaleDateString(
+                      'ja-JP'
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">貸出開始日</p>
+                  <p className="text-lg font-semibold text-gray-900">
                     {selectedTransaction.loanStartDate
                       ? new Date(selectedTransaction.loanStartDate).toLocaleDateString(
                           'ja-JP'
                         )
                       : '-'}
-                  </span>
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 border-t border-gray-200 pt-6">
               <button
                 onClick={handleCancel}
-                className="flex-1 px-4 py-2 bg-white text-indigo-600 border-2 border-indigo-600 font-semibold rounded-md hover:bg-indigo-50 transition"
+                className="flex-1 px-4 py-2 bg-white text-gray-600 border border-gray-300 font-semibold rounded-md hover:bg-gray-50 transition"
               >
-                キャンセル
+                閉じる
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={isSubmitting}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FontAwesomeIcon icon={faCheck} className="w-5 h-5" />
                 {isSubmitting ? '返却中...' : '返却する'}
@@ -259,19 +271,23 @@ export default function ReturnPage() {
                     カテゴリ
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    説明
+                    備考
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    貸出開始日
+                    購入日
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    アクション
+                    最終更新日
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50 transition">
+                  <tr
+                    key={transaction.id}
+                    onClick={() => setSelectedTransactionId(transaction.id)}
+                    className="hover:bg-gray-50 transition cursor-pointer"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {transaction.asset.name}
                     </td>
@@ -284,17 +300,10 @@ export default function ReturnPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {transaction.loanStartDate
-                        ? new Date(transaction.loanStartDate).toLocaleDateString('ja-JP')
-                        : '-'}
+                      {new Date(transaction.asset.createdAt).toLocaleDateString('ja-JP')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => setSelectedTransactionId(transaction.id)}
-                        className="px-3 py-1 bg-indigo-600 text-white text-xs font-medium rounded hover:bg-indigo-700 transition"
-                      >
-                        返却する
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {new Date(transaction.asset.updatedAt).toLocaleDateString('ja-JP')}
                     </td>
                   </tr>
                 ))}
