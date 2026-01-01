@@ -3,13 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCheck, faChevronRight } from '@fortawesome/free-solid-svg-icons'
+import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { getCurrentUser } from '@/lib/auth'
 import { getTransactionsByUserId } from '@/features/transactions/services/transactionService'
 import { returnAsset } from '@/features/transactions/actions'
 import type { Transaction } from '@prisma/client'
-
-type ReturnStep = 'select' | 'confirm'
 
 interface TransactionWithAsset extends Transaction {
   asset: {
@@ -25,16 +23,9 @@ interface TransactionWithAsset extends Transaction {
   }
 }
 
-interface ReturnFormData {
-  transactionId: string
-}
-
 export default function ReturnPage() {
   const router = useRouter()
-  const [step, setStep] = useState<ReturnStep>('select')
-  const [formData, setFormData] = useState<ReturnFormData>({
-    transactionId: '',
-  })
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [transactions, setTransactions] = useState<TransactionWithAsset[]>([])
@@ -78,7 +69,7 @@ export default function ReturnPage() {
 
   // 選択された取引
   const selectedTransaction = onLoanTransactions.find(
-    (t) => t.id === formData.transactionId
+    (t) => t.id === selectedTransactionId
   )
 
   // 検索フィルタリング
@@ -91,25 +82,23 @@ export default function ReturnPage() {
     )
   })
 
-  const handleSelectTransaction = (transactionId: string) => {
-    setFormData({ transactionId })
-    setStep('confirm')
+  const handleClearSearch = () => {
+    setSearchQuery('')
   }
 
   const handleConfirm = async () => {
-    if (!userId || !formData.transactionId) return
+    if (!userId || !selectedTransactionId) return
 
     setIsSubmitting(true)
     setError(null)
 
     try {
-      const result = await returnAsset(userId, formData.transactionId)
+      const result = await returnAsset(userId, selectedTransactionId)
 
       if (result.success) {
         setSuccessMessage('備品を返却しました')
         setTimeout(() => {
-          setFormData({ transactionId: '' })
-          setStep('select')
+          setSelectedTransactionId(null)
           setSuccessMessage(null)
           // 取引一覧を更新するため、リロード
           window.location.reload()
@@ -125,6 +114,10 @@ export default function ReturnPage() {
     }
   }
 
+  const handleCancel = () => {
+    setSelectedTransactionId(null)
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -138,7 +131,7 @@ export default function ReturnPage() {
       {/* Page Title */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">備品を返却する</h1>
-        <p className="text-gray-600 mt-1">借用中の備品から選択して返却できます</p>
+        <p className="text-gray-600 mt-1">借用中の備品を選択して返却できます</p>
       </div>
 
       {/* Error Message */}
@@ -155,169 +148,158 @@ export default function ReturnPage() {
         </div>
       )}
 
-      {/* Step Indicator */}
-      <div className="flex items-center justify-between bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center gap-4">
-          {/* Step 1 */}
-          <div className="flex flex-col items-center">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition ${
-                step === 'select' || step === 'confirm'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-200 text-gray-400'
-              }`}
-            >
-              1
+      {/* 返却確認モーダル */}
+      {selectedTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 space-y-6">
+            <div className="space-y-4">
+              <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm font-semibold text-red-800">
+                  備品を返却します
+                </p>
+              </div>
+
+              <div className="space-y-3 border-t border-gray-200 pt-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">備品コード</span>
+                  <span className="font-semibold text-gray-900">
+                    {selectedTransaction.asset.name}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">カテゴリ</span>
+                  <span className="font-semibold text-gray-900">
+                    {selectedTransaction.asset.category}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">説明</span>
+                  <span className="font-semibold text-gray-900">
+                    {selectedTransaction.asset.description || '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">貸出開始日</span>
+                  <span className="font-semibold text-gray-900">
+                    {selectedTransaction.loanStartDate
+                      ? new Date(selectedTransaction.loanStartDate).toLocaleDateString(
+                          'ja-JP'
+                        )
+                      : '-'}
+                  </span>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-gray-600 mt-2">備品選択</p>
+
+            <div className="flex gap-4">
+              <button
+                onClick={handleCancel}
+                className="flex-1 px-4 py-2 bg-white text-indigo-600 border-2 border-indigo-600 font-semibold rounded-md hover:bg-indigo-50 transition"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={isSubmitting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FontAwesomeIcon icon={faCheck} className="w-5 h-5" />
+                {isSubmitting ? '返却中...' : '返却する'}
+              </button>
+            </div>
           </div>
-
-          {/* Divider */}
-          <div
-            className={`w-16 h-1 transition ${
-              step === 'confirm' ? 'bg-indigo-600' : 'bg-gray-300'
-            }`}
-          />
-
-          {/* Step 2 */}
-          <div className="flex flex-col items-center">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition ${
-                step === 'confirm' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-400'
-              }`}
-            >
-              2
-            </div>
-            <p className="text-xs text-gray-600 mt-2">確認</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Step Content */}
-      {step === 'select' && (
-        <div className="space-y-4">
-          <p className="text-gray-600">返却する備品を選択してください</p>
-
-          {/* Search Box */}
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <input
-              type="text"
-              placeholder="備品名、カテゴリ、説明で検索..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Assets List */}
-          {onLoanTransactions.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <p className="text-gray-600">借用中の備品はありません</p>
-            </div>
-          ) : filteredTransactions.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <p className="text-gray-600">
-                検索結果がありません
-                <br />
-                「{searchQuery}」に該当する備品はいません
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredTransactions.map((transaction) => (
-                <button
-                  key={transaction.id}
-                  onClick={() => handleSelectTransaction(transaction.id)}
-                  className="w-full bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition hover:bg-gray-50"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {transaction.asset.name}
-                      </h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {transaction.asset.description || '-'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        カテゴリ: {transaction.asset.category}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        貸出日:{' '}
-                        {transaction.loanStartDate
-                          ? new Date(transaction.loanStartDate).toLocaleDateString(
-                              'ja-JP'
-                            )
-                          : '-'}
-                      </p>
-                    </div>
-                    <FontAwesomeIcon
-                      icon={faChevronRight}
-                      className="text-gray-400 w-5 h-5"
-                    />
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
-      {step === 'confirm' && selectedTransaction && (
-        <div className="space-y-6 bg-white rounded-lg shadow-md p-6">
-          <div className="space-y-4">
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm font-semibold text-red-800">
-                備品を返却します
-              </p>
-            </div>
-
-            <div className="space-y-3 border-t border-gray-200 pt-4">
-              <div className="flex justify-between">
-                <span className="text-gray-600">備品コード</span>
-                <span className="font-semibold text-gray-900">
-                  {selectedTransaction.asset.name}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">カテゴリ</span>
-                <span className="font-semibold text-gray-900">
-                  {selectedTransaction.asset.category}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">説明</span>
-                <span className="font-semibold text-gray-900">
-                  {selectedTransaction.asset.description || '-'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">貸出開始日</span>
-                <span className="font-semibold text-gray-900">
-                  {selectedTransaction.loanStartDate
-                    ? new Date(selectedTransaction.loanStartDate).toLocaleDateString(
-                        'ja-JP'
-                      )
-                    : '-'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-4 pt-4">
+      {/* 検索ボックス */}
+      <div className="mb-6 bg-white rounded-lg shadow-md p-4">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="備品名、カテゴリ、説明で検索..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+          {searchQuery && (
             <button
-              onClick={() => setStep('select')}
-              className="flex-1 px-4 py-2 bg-white text-indigo-600 border-2 border-indigo-600 font-semibold rounded-md hover:bg-indigo-50 transition"
+              onClick={handleClearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              title="検索をクリア"
             >
-              戻る
+              <FontAwesomeIcon icon={faXmark} className="w-5 h-5" />
             </button>
-            <button
-              onClick={handleConfirm}
-              disabled={isSubmitting}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <FontAwesomeIcon icon={faCheck} className="w-5 h-5" />
-              {isSubmitting ? '返却中...' : '返却する'}
-            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 備品一覧テーブル */}
+      {filteredTransactions.length === 0 && searchQuery ? (
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <p className="text-gray-600">
+            検索結果がありません
+            <br />
+            「{searchQuery}」に該当する備品はいません
+          </p>
+        </div>
+      ) : onLoanTransactions.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <p className="text-gray-600">借用中の備品はありません</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    備品コード
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    カテゴリ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    説明
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    貸出開始日
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    アクション
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredTransactions.map((transaction) => (
+                  <tr key={transaction.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {transaction.asset.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {transaction.asset.category}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      <div className="max-w-xs truncate" title={transaction.asset.description || ''}>
+                        {transaction.asset.description || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {transaction.loanStartDate
+                        ? new Date(transaction.loanStartDate).toLocaleDateString('ja-JP')
+                        : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => setSelectedTransactionId(transaction.id)}
+                        className="px-3 py-1 bg-indigo-600 text-white text-xs font-medium rounded hover:bg-indigo-700 transition"
+                      >
+                        返却する
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
