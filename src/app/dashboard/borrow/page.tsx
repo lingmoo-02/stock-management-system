@@ -3,23 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCheck, faChevronRight } from '@fortawesome/free-solid-svg-icons'
+import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { getCurrentUser } from '@/lib/auth'
 import { borrowAsset } from '@/features/transactions/actions'
 import type { Asset } from '@/features/assets/types'
 
-type BorrowStep = 'select' | 'confirm'
-
-interface BorrowFormData {
-  assetId: string
-}
-
 export default function BorrowPage() {
   const router = useRouter()
-  const [step, setStep] = useState<BorrowStep>('select')
-  const [formData, setFormData] = useState<BorrowFormData>({
-    assetId: '',
-  })
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [assets, setAssets] = useState<Asset[]>([])
@@ -60,7 +51,7 @@ export default function BorrowPage() {
     loadData()
   }, [router])
 
-  const selectedAsset = assets.find((a) => a.id === formData.assetId)
+  const selectedAsset = assets.find((a) => a.id === selectedAssetId)
 
   // 検索フィルタリング
   const filteredAssets = assets.filter((asset) => {
@@ -72,25 +63,23 @@ export default function BorrowPage() {
     )
   })
 
-  const handleSelectAsset = (assetId: string) => {
-    setFormData({ assetId })
-    setStep('confirm')
+  const handleClearSearch = () => {
+    setSearchQuery('')
   }
 
   const handleConfirm = async () => {
-    if (!userId || !formData.assetId) return
+    if (!userId || !selectedAssetId) return
 
     setIsSubmitting(true)
     setError(null)
 
     try {
-      const result = await borrowAsset(userId, formData.assetId)
+      const result = await borrowAsset(userId, selectedAssetId)
 
       if (result.success) {
         setSuccessMessage('備品を借りました')
         setTimeout(() => {
-          setFormData({ assetId: '' })
-          setStep('select')
+          setSelectedAssetId(null)
           setSuccessMessage(null)
           // 資産一覧を更新するため、リロード
           window.location.reload()
@@ -104,6 +93,10 @@ export default function BorrowPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleCancel = () => {
+    setSelectedAssetId(null)
   }
 
   if (isLoading) {
@@ -136,150 +129,153 @@ export default function BorrowPage() {
         </div>
       )}
 
-      {/* Step Indicator */}
-      <div className="flex items-center justify-between bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center gap-4">
-          {/* Step 1 */}
-          <div className="flex flex-col items-center">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition ${
-                step === 'select' || step === 'confirm'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-200 text-gray-400'
-              }`}
-            >
-              1
+      {/* 借用確認モーダル */}
+      {selectedAsset && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 space-y-6">
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-gray-900">備品詳細</h2>
+
+              <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+                <div>
+                  <p className="text-sm text-gray-600">備品コード</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {selectedAsset.name}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">カテゴリ</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {selectedAsset.category}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-sm text-gray-600">備考</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {selectedAsset.description || '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">購入日</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {new Date(selectedAsset.createdAt).toLocaleDateString('ja-JP')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">最終更新日</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {new Date(selectedAsset.updatedAt).toLocaleDateString('ja-JP')}
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-gray-600 mt-2">備品選択</p>
+
+            <div className="flex gap-4 border-t border-gray-200 pt-6">
+              <button
+                onClick={handleCancel}
+                className="flex-1 px-4 py-2 bg-white text-gray-600 border border-gray-300 font-semibold rounded-md hover:bg-gray-50 transition"
+              >
+                閉じる
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={isSubmitting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FontAwesomeIcon icon={faCheck} className="w-5 h-5" />
+                {isSubmitting ? '借用中...' : '借りる'}
+              </button>
+            </div>
           </div>
-
-          {/* Divider */}
-          <div
-            className={`w-16 h-1 transition ${
-              step === 'confirm' ? 'bg-indigo-600' : 'bg-gray-300'
-            }`}
-          />
-
-          {/* Step 2 */}
-          <div className="flex flex-col items-center">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition ${
-                step === 'confirm' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-400'
-              }`}
-            >
-              2
-            </div>
-            <p className="text-xs text-gray-600 mt-2">確認</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Step Content */}
-      {step === 'select' && (
-        <div className="space-y-4">
-          <p className="text-gray-600">利用可能な備品を選択してください</p>
-
-          {/* Search Box */}
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <input
-              type="text"
-              placeholder="備品名、カテゴリ、説明で検索..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
-
-          {assets.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <p className="text-gray-600">利用可能な備品はありません</p>
-            </div>
-          ) : filteredAssets.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <p className="text-gray-600">
-                検索結果がありません
-                <br />
-                「{searchQuery}」に該当する備品はいません
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredAssets.map((asset) => (
-                <button
-                  key={asset.id}
-                  onClick={() => handleSelectAsset(asset.id)}
-                  className="w-full bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition hover:bg-gray-50"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {asset.name}
-                      </h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {asset.description || '-'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        カテゴリ: {asset.category}
-                      </p>
-                    </div>
-                    <FontAwesomeIcon
-                      icon={faChevronRight}
-                      className="text-gray-400 w-5 h-5"
-                    />
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
-      {step === 'confirm' && selectedAsset && (
-        <div className="space-y-6 bg-white rounded-lg shadow-md p-6">
-          <div className="space-y-4">
-            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-md">
-              <p className="text-sm font-semibold text-indigo-800">
-                この備品を借りてもよろしいですか？
-              </p>
-            </div>
-
-            <div className="space-y-3 border-t border-gray-200 pt-4">
-              <div className="flex justify-between">
-                <span className="text-gray-600">備品コード</span>
-                <span className="font-semibold text-gray-900">
-                  {selectedAsset.name}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">カテゴリ</span>
-                <span className="font-semibold text-gray-900">
-                  {selectedAsset.category}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">説明</span>
-                <span className="font-semibold text-gray-900">
-                  {selectedAsset.description || '-'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-4 pt-4">
+      {/* 検索ボックス */}
+      <div className="mb-6 bg-white rounded-lg shadow-md p-4">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="備品名、カテゴリ、説明で検索..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+          {searchQuery && (
             <button
-              onClick={() => setStep('select')}
-              className="flex-1 px-4 py-2 bg-white text-indigo-600 border-2 border-indigo-600 font-semibold rounded-md hover:bg-indigo-50 transition"
+              onClick={handleClearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              title="検索をクリア"
             >
-              戻る
+              <FontAwesomeIcon icon={faXmark} className="w-5 h-5" />
             </button>
-            <button
-              onClick={handleConfirm}
-              disabled={isSubmitting}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <FontAwesomeIcon icon={faCheck} className="w-5 h-5" />
-              {isSubmitting ? '借用中...' : '今すぐ借りる'}
-            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 備品一覧テーブル */}
+      {filteredAssets.length === 0 && searchQuery ? (
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <p className="text-gray-600">
+            検索結果がありません
+            <br />
+            「{searchQuery}」に該当する備品はいません
+          </p>
+        </div>
+      ) : assets.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <p className="text-gray-600">利用可能な備品はありません</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    備品コード
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    カテゴリ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    備考
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    購入日
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    最終更新日
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredAssets.map((asset) => (
+                  <tr
+                    key={asset.id}
+                    onClick={() => setSelectedAssetId(asset.id)}
+                    className="hover:bg-gray-50 transition cursor-pointer"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {asset.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {asset.category}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      <div className="max-w-xs truncate" title={asset.description || ''}>
+                        {asset.description || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {new Date(asset.createdAt).toLocaleDateString('ja-JP')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {new Date(asset.updatedAt).toLocaleDateString('ja-JP')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
